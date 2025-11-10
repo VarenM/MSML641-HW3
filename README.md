@@ -18,20 +18,60 @@ Then install all Python dependencies from requirements.txt using (can be done wi
 pip install -r requirements.txt
 ```
 
-## How to Run the Code
+# OR
 
-First, ensure the current working directory is the main project folder (not within src, so remember to call each file with `src/` in front)
+You can also run this code in a Google Colab notebook (ensure to use T4-Python runtime) to speed up training
 
-Start by preprocessing the data using `preprocess.py`.
+first upload the entire project zip (containing folders `data` and `src`)
+
+ensure this is the zip architecture:
+
+project.zip:
+
+├── data/
+
+│   ├── train/
+
+│   ├── test/
+
+├── src/
+
+│   ├── preprocess.py
+
+│   ├── models.py
+
+│   ├── train.py
+
+│   ├── evaluate.py
+
+│   └── utils.py
+
+After uploading the zip folder to Colab's runtime, use:
 ```bash=
-python src/preprocess.py
+!unzip project.zip -d /content
 ```
 
-Once you have obtained the preprocessed data (located in `data/processed/`), run `models.py`
+## How to Run the Code
 
-Next run `utils.py`.
+If running locally, first, ensure the current working directory is the main project folder (not within src, so remember to call each file with `src/` in front)
 
-Start training, by running `train.py` after the above steps have been completed.
+Start by running `utils.py`.
+```bash=
+python src/utils.py
+```
+
+# OR
+
+Otherwise if running on Colab use:
+```bash=
+%run src/utils.py
+```
+
+Next run `models.py`.
+
+Then preprocess the data using `preprocess.py`.
+
+Once you have obtained the preprocessed data (located in `data/processed/`), start training, by running `train.py`.
 
 Finally, to view the best model's performance use `evaluate.py`.
 
@@ -43,6 +83,6 @@ Finally, to view the best model's performance use `evaluate.py`.
 
 `utils.py` = takes about 3 seconds on local machine
 
-`train.py` = takes about 1 hour on local machine (around 12 secs per epoch)
+`train.py` = takes a little more than an hour on Colab machine (around 3 secs per epoch) (around 2 hours on local)
 
 `evaluate.py` = takes about 5 seconds on local machine

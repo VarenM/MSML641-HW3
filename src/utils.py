@@ -8,6 +8,26 @@ import platform
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, f1_score
 
+# Returns (BASE_DIR, PROJECT_ROOT) adjusted automatically for local machine vs Google Colab.
+def get_project_paths():
+    # Detect if running in Google Colab
+    try:
+        import google.colab
+        IN_COLAB = True
+    except ImportError:
+        IN_COLAB = False
+
+    if IN_COLAB:
+        # Colab environment
+        PROJECT_ROOT = "/content"
+        BASE_DIR = os.path.join(PROJECT_ROOT, "src")
+    else:
+        # Local environment: determine dynamically based on this file's path
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        PROJECT_ROOT = os.path.dirname(BASE_DIR)
+
+    return BASE_DIR, PROJECT_ROOT
+
 def set_seed(seed=42):
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -38,12 +58,9 @@ def report_hardware():
     print("Hardware Info:", info)
     return info
 
-def plot_metrics():
+def plot_metrics(epochs_num=10):
     # Get absolute path to this script's directory
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-    # Move up one directory to project root
-    PROJECT_ROOT = os.path.dirname(BASE_DIR)
+    BASE_DIR, PROJECT_ROOT = get_project_paths()
 
     results_dir = os.path.join(PROJECT_ROOT, 'results')
 
@@ -80,7 +97,6 @@ def plot_metrics():
 
     def plot_training_loss(best_loss_curve_path, worst_loss_curve_path, model_name):
         fig, ax = plt.subplots(figsize=(8, 5))
-        epochs = list(range(1, 11))  # Assuming 10 epochs
 
         # Load loss curves
         with open(best_loss_curve_path, 'r') as f:
@@ -88,8 +104,13 @@ def plot_metrics():
         with open(worst_loss_curve_path, 'r') as f:
             worst_losses = json.load(f)
 
-        ax.plot(epochs, best_losses, marker='o', label='Best Model')
-        ax.plot(epochs, worst_losses, marker='o', label='Worst Model')
+        # Use lengths of loss curves to create epochs x-axis
+        epochs_best = list(range(1, len(best_losses) + 1))
+        epochs_worst = list(range(1, len(worst_losses) + 1))
+
+        ax.plot(epochs_best, best_losses, marker='o', label='Best Model')
+        ax.plot(epochs_worst, worst_losses, marker='s', label='Worst Model')
+        
         ax.set_title(f'{model_name} Training Loss vs Epochs (Best vs Worst)')
         ax.set_xlabel('Epoch')
         ax.set_ylabel('Training Loss')
@@ -108,14 +129,6 @@ def plot_metrics():
 
     # Determine best and worst models for loss curve plotting (approximate by accuracy)
     def get_loss_curve_path(model_row, best_or_worst):
-        # Get absolute path to this script's directory
-        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-        # Move up one directory to project root
-        PROJECT_ROOT = os.path.dirname(BASE_DIR)
-
-        results_dir = os.path.join(PROJECT_ROOT, 'results')
-
         model_name = model_row['Model'].replace(" ", "_")
 
         filename = f'{model_name}_{best_or_worst}_model_loss_curve.json'
@@ -128,10 +141,13 @@ def plot_metrics():
         best_model = model_df.loc[best_acc_idx]
         worst_model = model_df.loc[worst_acc_idx]
 
-        # Replace with actual paths for best and worst loss curves saved during your training for these models
+        # Paths for best and worst loss curves
         best_loss_path = get_loss_curve_path(best_model, "best")
         worst_loss_path = get_loss_curve_path(worst_model, "worst")
 
         plot_training_loss(best_loss_path, worst_loss_path, model_name)
 
     print("All plots saved to the results/ directory.")
+    
+if __name__ == "__main__":
+    report_hardware()

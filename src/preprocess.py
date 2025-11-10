@@ -5,6 +5,7 @@ import pickle
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+from utils import get_project_paths
 
 def load_reviews(folder):
     reviews, labels = [], []
@@ -40,10 +41,7 @@ def load_tokenizer(path='tokenizer.pkl'):
 
 if __name__ == "__main__":
     # Get absolute path to this script's directory
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-    # Move up one directory to project root
-    PROJECT_ROOT = os.path.dirname(BASE_DIR)
+    BASE_DIR, PROJECT_ROOT = get_project_paths()
 
     # Define data paths relative to project root
     train_folder = os.path.join(PROJECT_ROOT, 'data', 'train')
@@ -64,9 +62,16 @@ if __name__ == "__main__":
     train_reviews, valid_reviews, train_labels, valid_labels = train_test_split(train_reviews, train_labels, test_size=0.1, random_state=42, stratify=train_labels)
 
     # Tokenizer
-    tokenizer = Tokenizer(num_words=10000)
-    tokenizer.fit_on_texts(train_reviews)
-    save_tokenizer(tokenizer, os.path.join(output_dir, 'tokenizer.pkl'))
+    tokenizer_path = os.path.join(output_dir, 'tokenizer.pkl')
+
+    if os.path.exists(tokenizer_path):
+        print("Tokenizer found, loading tokenizer...")
+        tokenizer = load_tokenizer(tokenizer_path)
+    else:
+        print("No tokenizer found, building new tokenizer...")
+        tokenizer = Tokenizer(num_words=10000)
+        tokenizer.fit_on_texts(train_reviews)
+        save_tokenizer(tokenizer, tokenizer_path)
 
     # Convert to sequences
     train_seqs = tokenizer.texts_to_sequences(train_reviews)

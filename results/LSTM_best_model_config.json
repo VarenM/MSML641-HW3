@@ -1,0 +1,1 @@
+{"vocab_size": 10000, "embed_size": 100, "hidden_size": 64, "num_layers": 2, "dropout": 0.5, "cell_type": "LSTM", "bidirectional": false, "activation": "relu", "batch_size": 32, "epochs": 10, "optimizer": "RMSprop", "lr": 0.001, "grad_clip": 1.0, "sequence_length": 100}

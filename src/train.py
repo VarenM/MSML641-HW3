@@ -7,12 +7,10 @@ import itertools
 import pandas as pd
 import json
 import os
-# from preprocess import load_tokenizer
 from models import get_model
-from utils import set_seed, get_device, compute_metrics, plot_metrics
+from utils import set_seed, get_device, compute_metrics, plot_metrics, get_project_paths
 
-
-def train_model(model, train_data, train_labels, valid_data, valid_labels, config, best_valid_loss_so_far, worst_valid_loss_so_far):
+def train_model(model, train_data, train_labels, valid_data, valid_labels, config):
     device = get_device()
     model.to(device)
     optimizer_class = getattr(optim, config['optimizer'])
@@ -27,8 +25,7 @@ def train_model(model, train_data, train_labels, valid_data, valid_labels, confi
     valid_dataset = TensorDataset(torch.tensor(valid_data, dtype=torch.long), torch.tensor(valid_labels, dtype=torch.float))
     valid_loader = DataLoader(valid_dataset, batch_size=batch_size)
 
-    best_valid_loss = best_valid_loss_so_far
-    worst_valid_loss = worst_valid_loss_so_far
+    best_valid_loss = float('inf')
     best_metrics = None
     epoch_losses = []  # Add list to store training loss per epoch
 
@@ -54,7 +51,6 @@ def train_model(model, train_data, train_labels, valid_data, valid_labels, confi
                 torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
             optimizer.step()
             epoch_loss += loss.item()
-
 
         if torch.cuda.is_available():
             end_time.record()
@@ -85,38 +81,14 @@ def train_model(model, train_data, train_labels, valid_data, valid_labels, confi
 
         print(f"Epoch {epoch+1}: Train Loss={epoch_loss:.3f}, Valid Loss={valid_loss:.3f}, "
               f"Valid Acc={valid_metrics['accuracy']:.4f}, Valid F1={valid_metrics['f1']:.4f}, Time={duration:.2f}s")
-
-        # Save best model if validation loss improves
-        model_name = model.cell_type.replace(" ", "_")
-
-        # Get absolute path to this script's directory
-        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-        # Move up one directory to project root
-        PROJECT_ROOT = os.path.dirname(BASE_DIR)
-
-        results_dir = os.path.join(PROJECT_ROOT, 'results')
-        os.makedirs(results_dir, exist_ok=True)
-
+        
+        # Track best validation loss internally
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
             best_metrics = valid_metrics
-            torch.save(model.state_dict(), os.path.join(results_dir, 'best_model.pt'))
-            # Save config as JSON for reproducibility
-            with open(os.path.join(results_dir, 'best_model_config.json'), 'w') as f:
-                json.dump(config, f)
-            # Save training loss curve for the best model
-            with open(os.path.join(results_dir, f'{model_name}_best_model_loss_curve.json'), 'w') as f:
-                json.dump(epoch_losses, f)
 
-        elif valid_loss > worst_valid_loss:
-            worst_valid_loss = valid_loss
-            # Save training loss curve for the worst model
-            with open(os.path.join(results_dir, f'{model_name}_worst_model_loss_curve.json'), 'w') as f:
-                json.dump(epoch_losses, f)
-
-    # return model, best_metrics, best_valid_loss, worst_valid_loss
-    return model, best_metrics or valid_metrics, best_valid_loss, worst_valid_loss
+    # Return full epoch losses, best validation loss and metrics
+    return model, best_metrics, best_valid_loss, epoch_losses
 
 def main():
     set_seed(42)
@@ -126,14 +98,14 @@ def main():
     optimizers = ['Adam', 'SGD', 'RMSprop']
     sequence_lengths = [25, 50, 100]
     grad_clippings = [None, 1.0]
+    epochs = 10
 
     # Get absolute path to this script's directory
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-    # Move up one directory to project root
-    PROJECT_ROOT = os.path.dirname(BASE_DIR)
+    BASE_DIR, PROJECT_ROOT = get_project_paths()
 
     output_dir = os.path.join(PROJECT_ROOT, 'data', 'processed')
+    results_dir = os.path.join(PROJECT_ROOT, 'results')
+    os.makedirs(results_dir, exist_ok=True)
 
     results = []
 
@@ -141,13 +113,19 @@ def main():
     best_valid_loss = {arch: float('inf') for arch in architectures}
     worst_valid_loss = {arch: -float('inf') for arch in architectures}
 
+    best_losses_curves = {}
+    worst_losses_curves = {}
+
     for arch, act, opt, seq_len, grad_clip in itertools.product(architectures, activations, optimizers, sequence_lengths, grad_clippings):
         print(f"Training {arch}, Activation={act}, Optimizer={opt}, SeqLen={seq_len}, GradClip={grad_clip}")
 
-        X_train = np.load(f'{output_dir}/train_pad_{seq_len}.npy')
-        y_train = np.load(f'{output_dir}/train_labels.npy')
-        X_valid = np.load(f'{output_dir}/valid_pad_{seq_len}.npy')
-        y_valid = np.load(f'{output_dir}/valid_labels.npy')
+        x_train_filename = f'train_pad_{seq_len}.npy'
+        x_valid_filename = f'valid_pad_{seq_len}.npy'
+
+        X_train = np.load(os.path.join(output_dir, x_train_filename))
+        y_train = np.load(os.path.join(output_dir, 'train_labels.npy'))
+        X_valid = np.load(os.path.join(output_dir, x_valid_filename))
+        y_valid = np.load(os.path.join(output_dir, 'valid_labels.npy'))
 
         config = {
             'vocab_size': 10000,
@@ -159,24 +137,43 @@ def main():
             'bidirectional': (arch == 'Bidirectional LSTM'),
             'activation': act,
             'batch_size': 32,
-            'epochs': 1,
+            'epochs': epochs,
             'optimizer': opt,
             'lr': 0.001,
-            'grad_clip': grad_clip
+            'grad_clip': grad_clip,
+            'sequence_length': seq_len
         }
 
         model = get_model(config)
 
         start_time = time.time()
-        trained_model, best_val_metrics, best_valid_loss[arch], worst_valid_loss[arch] = train_model(
-            model, X_train, y_train, X_valid, y_valid, config,
-            best_valid_loss[arch], worst_valid_loss[arch]
+        trained_model, best_val_metrics, valid_loss, epoch_losses = train_model(
+            model, X_train, y_train, X_valid, y_valid, config
         )
 
-        total_time = time.time() - start_time
-        epoch_time = total_time / config['epochs']
+        duration = time.time() - start_time
 
-        # Use metrics returned from train_model; no redundant evaluation call here
+        # Update best model weights and loss curve if improved
+        model_name = arch.replace(" ", "_") # handles spaces in model name
+
+        if valid_loss < best_valid_loss[arch]:
+            best_valid_loss[arch] = valid_loss
+            torch.save(trained_model.state_dict(), os.path.join(results_dir, f'best_model_{model_name}.pt'))
+            with open(os.path.join(results_dir, f'{model_name}_best_model_config.json'), 'w') as f:
+                json.dump(config, f)
+            with open(os.path.join(results_dir, f'{model_name}_best_model_loss_curve.json'), 'w') as f:
+                json.dump(epoch_losses, f)
+
+            best_losses_curves[arch] = epoch_losses
+
+        # Update worst model if applicable
+        if valid_loss > worst_valid_loss[arch]:
+            worst_valid_loss[arch] = valid_loss
+            with open(os.path.join(results_dir, f'{model_name}_worst_model_loss_curve.json'), 'w') as f:
+                json.dump(epoch_losses, f)
+
+            worst_losses_curves[arch] = epoch_losses
+
         results.append({
             'Model': arch,
             'Activation': act.capitalize(),
@@ -185,15 +182,15 @@ def main():
             'Grad Clipping': 'Yes' if grad_clip else 'No',
             'Accuracy': best_val_metrics['accuracy'],
             'F1': best_val_metrics['f1'],
-            'Epoch Time (s)': round(epoch_time, 2)
+            'Epoch Time (s)': round(duration / epochs, 2)
         })
 
     df = pd.DataFrame(results)
-    df.to_csv('results/metrics.csv', index=False)
+    df.to_csv(os.path.join(results_dir, 'metrics.csv'), index=False)
     print("Experiment sweep complete. Results saved to results/metrics.csv")
 
     print("Building Plots...")
-    plot_metrics()
+    plot_metrics(epochs)
 
 if __name__ == "__main__":
     main()

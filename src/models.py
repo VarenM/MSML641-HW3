@@ -8,9 +8,7 @@ activation_funcs = {
 }
 
 class SentimentRNN(nn.Module):
-    def __init__(self, vocab_size, embed_size=100, hidden_size=64,
-                 num_layers=2, dropout=0.5, cell_type="RNN",
-                 bidirectional=False, activation='sigmoid'):
+    def __init__(self, vocab_size, embed_size=100, hidden_size=64, num_layers=2, dropout=0.5, cell_type="RNN", bidirectional=False, activation='sigmoid'):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_size)
         cell_map = {
@@ -20,11 +18,7 @@ class SentimentRNN(nn.Module):
         }
         self.cell_type = cell_type
         self.bidirectional = (cell_type == 'Bidirectional LSTM')
-        self.rnn = cell_map[cell_type](embed_size, hidden_size,
-                                      num_layers=num_layers,
-                                      dropout=dropout,
-                                      batch_first=True,
-                                      bidirectional=self.bidirectional)
+        self.rnn = cell_map[cell_type](embed_size, hidden_size, num_layers=num_layers, dropout=dropout, batch_first=True, bidirectional=self.bidirectional)
         direction_mult = 2 if self.bidirectional else 1
         self.fc = nn.Linear(hidden_size * direction_mult, 1)
         self.output_activation = nn.Sigmoid()
