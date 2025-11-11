@@ -63,6 +63,8 @@ def plot_metrics(epochs_num=10):
     BASE_DIR, PROJECT_ROOT = get_project_paths()
 
     results_dir = os.path.join(PROJECT_ROOT, 'results')
+    plots_dir = os.path.join(results_dir, 'plots')
+    os.makedirs(plots_dir, exist_ok=True)
 
     # Load sweep summary CSV
     df = pd.read_csv(os.path.join(results_dir, 'metrics.csv'))
@@ -91,7 +93,7 @@ def plot_metrics(epochs_num=10):
         ax.legend()
 
         filename = f'{model_name}_accuracy_f1_vs_seq_length.png'
-        plt.savefig(os.path.join(results_dir, filename))
+        plt.savefig(os.path.join(plots_dir, filename))
 
         plt.close()
 
@@ -118,7 +120,7 @@ def plot_metrics(epochs_num=10):
         ax.legend()
 
         filename = f'{model_name}_training_loss_best_worst.png'
-        plt.savefig(os.path.join(results_dir, filename))
+        plt.savefig(os.path.join(plots_dir, filename))
 
         plt.close()
 
@@ -147,7 +149,7 @@ def plot_metrics(epochs_num=10):
 
         plot_training_loss(best_loss_path, worst_loss_path, model_name)
 
-    print("All plots saved to the results/ directory.")
+    print("All plots saved to the results/plots/ directory.")
     
 if __name__ == "__main__":
     report_hardware()

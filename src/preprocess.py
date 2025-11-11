@@ -38,6 +38,31 @@ def save_tokenizer(tokenizer, path='tokenizer.pkl'):
 def load_tokenizer(path='tokenizer.pkl'):
     with open(path, 'rb') as f:
         return pickle.load(f)
+    
+def dataset_summary(train_sequences, valid_sequences, test_sequences, word_index):
+    # Flatten all lengths
+    train_lengths = [len(seq) for seq in train_sequences]
+    valid_lengths = [len(seq) for seq in valid_sequences]
+    test_lengths = [len(seq) for seq in test_sequences]
+    
+    print("\nDATASET SUMMARY")
+    print(f"Training samples: {len(train_sequences)}")
+    print(f"Valid samples:    {len(valid_sequences)}")
+    print(f"Testing samples:  {len(test_sequences)}")
+    print(f"Vocabulary size:  {len(word_index) + 1}")  # +1 for padding token
+    
+    print(f"\nAverage train review length:  {np.mean(train_lengths):.2f}")
+    print(f"Std. dev. of train lengths:   {np.std(train_lengths):.2f}")
+    print(f"Max train review length:      {np.max(train_lengths)}")
+    print(f"Min train review length:      {np.min(train_lengths)}")
+    print(f"\nAverage valid review length:  {np.mean(valid_lengths):.2f}")
+    print(f"Std. dev. of valid lengths:   {np.std(valid_lengths):.2f}")
+    print(f"Max valid review length:      {np.max(valid_lengths)}")
+    print(f"Min valid review length:      {np.min(valid_lengths)}")
+    print(f"\nAverage test review length:  {np.mean(test_lengths):.2f}")
+    print(f"Std. dev. of test lengths:   {np.std(test_lengths):.2f}")
+    print(f"Max test review length:      {np.max(test_lengths)}")
+    print(f"Min test review length:      {np.min(test_lengths)}")
 
 if __name__ == "__main__":
     # Get absolute path to this script's directory
@@ -69,7 +94,7 @@ if __name__ == "__main__":
         tokenizer = load_tokenizer(tokenizer_path)
     else:
         print("No tokenizer found, building new tokenizer...")
-        tokenizer = Tokenizer(num_words=10000)
+        tokenizer = Tokenizer(num_words=10000, oov_token="<UNK>")
         tokenizer.fit_on_texts(train_reviews)
         save_tokenizer(tokenizer, tokenizer_path)
 
@@ -77,6 +102,9 @@ if __name__ == "__main__":
     train_seqs = tokenizer.texts_to_sequences(train_reviews)
     valid_seqs = tokenizer.texts_to_sequences(valid_reviews)
     test_seqs = tokenizer.texts_to_sequences(test_reviews)
+
+    # Obtain preprocessing statistics for report
+    dataset_summary(train_seqs, valid_seqs, test_seqs, tokenizer.word_index)
 
     # Save data padded to different lengths
     for length in [25, 50, 100]:
