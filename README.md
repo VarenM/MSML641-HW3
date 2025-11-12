@@ -1,5 +1,7 @@
 # MSML641: Homework 3 - Sentiment Analysis
 
+## *Github Repo: https://github.com/VarenM/MSML641-HW3*
+
 ## Setup
 
 Ensure Python is installed correctly (any version past 3.10 should work)
@@ -22,11 +24,11 @@ pip install -r requirements.txt
 
 You can also run this code in a Google Colab notebook (ensure to use T4-Python runtime) to speed up training
 
-first upload the entire project zip (containing folders `data` and `src`)
+first upload the entire project zip as a zip called `project` (containing folders `data` and `src`)
 
 ensure this is the zip architecture:
 
-project.zip:
+`project.zip`:
 
 ├── data/
 
@@ -69,7 +71,7 @@ Otherwise if running on Colab use:
 
 Next run `models.py` (using the command structure shown above).
 
-Then preprocess the data using `preprocess.py`.
+Then preprocess the data using `preprocess.py` (note, data is already preprocessed, but if you would like to run your own preprocessing, delete the `processed` folder in `data`).
 
 Once you have obtained the preprocessed data (located in `data/processed/`), start training, by running `train.py`.
 
@@ -93,9 +95,9 @@ Output: prints hardware description (`Hardware Info` seen above)
 
 `models.py` = takes under 10 seconds on local machine
 
-Output: None; it simply sets up the methods to obtain an RNN
+Output: None; it simply sets up the methods to obtain different models
 
-`preprocess.py` = takes about a minute on a local machine (in colab it runs in seconds)
+`preprocess.py` = takes about a minute on a local machine (in Colab it runs in seconds)
 
 Output: checks if a tokenizer already exists in `data/processed` and if not creates a tokenizer and tokenizes/pads train/validate/test data. It also prints the location of all saved tokenized files and a report summary of preprocessed data statistics (e.g., avg. review length, vocab size)
 
